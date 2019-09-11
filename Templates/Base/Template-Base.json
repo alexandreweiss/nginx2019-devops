@@ -1,0 +1,171 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "environment": {
+          "type": "string",
+          "defaultValue": "dev"
+      },
+      "appCode": {
+          "type": "string",
+          "metadata": {
+              "description": "String used as a base for naming resources."
+          },
+          "minLength": 3,
+          "maxLength": 15
+      },
+      "location": {
+          "type": "string",
+          "defaultValue": "westus2",
+          "metadata": {
+              "description": "Location for the VM, only certain regions support Availability Zones"
+          }
+      },
+      "friendlyLocation": {
+          "type": "string",
+          "defaultValue": "wus",
+          "metadata": {
+              "description": "Location for the VM, only certain regions support Availability Zones"
+          }
+      },
+      "tenantId": {
+        "type": "string",
+        "defaultValue": "[subscription().tenantId]",
+        "metadata": {
+          "description": "Tenant Id of the subscription. Get using Get-AzSubscription cmdlet or Get Subscription API"
+        }
+      },
+      "skuName": {
+        "type": "string",
+        "defaultValue": "Standard",
+        "allowedValues": [
+          "Standard",
+          "Premium"
+        ],
+        "metadata": {
+          "description": "SKU for the vault"
+        }
+      },
+      "enableVaultForDeployment": {
+        "type": "bool",
+        "defaultValue": true,
+        "allowedValues": [
+          true,
+          false
+        ],
+        "metadata": {
+          "description": "Specifies if the vault is enabled for a VM deployment"
+        }
+      },
+      "enableVaultForDiskEncryption": {
+        "type": "bool",
+        "defaultValue": false,
+        "allowedValues": [
+          true,
+          false
+        ],
+        "metadata": {
+          "description": "Specifies if the azure platform has access to the vault for enabling disk encryption scenarios."
+        }
+      },
+      "enabledForTemplateDeployment": {
+        "type": "bool",
+        "defaultValue": false,
+        "allowedValues": [
+          true,
+          false
+        ],
+        "metadata": {
+          "description": "Specifies whether Azure Resource Manager is permitted to retrieve secrets from the key vault."
+        }
+      },
+      "omsServiceTier": {
+        "type": "string",
+        "allowedValues": [
+          "Free",
+          "Standalone",
+          "PerNode"
+        ],
+        "metadata": {
+          "description": "Service Tier: Free, Standalone, or PerNode"
+        },
+        "defaultValue": "Free"
+      },
+      "omsDataRetention": {
+        "type": "int",
+        "defaultValue": 30,
+        "minValue": 7,
+        "maxValue": 730,
+        "metadata": {
+          "description": "Number of days of retention. Free plans can only have 7 days, Standalone and OMS plans include 30 days for free"
+        }
+      }
+    },
+    "variables": {
+      "workspaceName": "[concat(parameters('friendlyLocation'),'-',parameters('environment'), '-oms')]",
+      "keyVaultName": "[concat(parameters('friendlyLocation'),'-',parameters('environment'),'-',parameters('appCode'), '-kv')]",
+      "apiVersion": {
+        "keyVault": "2018-02-14",
+        "network": "2017-08-01",
+        "insights": "2017-04-26-preview"
+    }
+    },
+    "resources": [
+      {
+        "type": "Microsoft.KeyVault/vaults",
+        "name": "[variables('keyVaultName')]",
+        "apiVersion": "[variables('apiVersion').keyVault]",
+        "location": "[parameters('location')]",
+        "tags": {
+          "displayName": "KeyVault"
+        },
+        "properties": {
+          "enabledForDeployment": "[parameters('enableVaultForDeployment')]",
+          "enabledForDiskEncryption": "[parameters('enableVaultForDiskEncryption')]",
+          "enabledForTemplateDeployment": "[parameters('enabledForTemplateDeployment')]",
+          "tenantId": "[parameters('tenantId')]",
+          "accessPolicies": [
+            {
+              "objectId": "5b7734fa-ae26-4ce3-88d3-be8d6f7786fa",
+              "tenantId": "[parameters('tenantId')]",
+              "permissions": {
+                "secrets": [
+                  "all"
+                ]
+              }
+            },
+            {
+              "objectId": "6d0df68d-552b-43b2-8cad-ec8cda522252",
+              "tenantId": "[parameters('tenantId')]",
+              "permissions": {
+                "secrets": [
+                  "all"
+                ]
+              }
+            }
+          ],
+          "sku": {
+            "name": "[parameters('skuName')]",
+            "family": "A"
+          }
+        }
+      },
+      {
+        "type": "Microsoft.OperationalInsights/workspaces",
+        "name": "[variables('workspaceName')]",
+        "location": "[resourceGroup().location]",
+        "apiVersion": "[variables('apiVersion').insights]",
+        "tags": {
+          "displayName": "Log Analytic Workspace"
+        },
+        "properties": {
+          "sku": {
+            "name": "[parameters('omsServiceTier')]"
+          },
+          "retention": "[parameters('omsDataRetention')]"
+        },
+        "resources": [ ]
+      }
+    ]
+  }
+  

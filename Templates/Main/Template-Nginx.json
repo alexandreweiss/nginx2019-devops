@@ -1,0 +1,458 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "environment": {
+            "type": "string",
+            "defaultValue": "dev"
+        },
+        "appCode": {
+            "type": "string",
+            "metadata": {
+                "description": "String used as a base for naming resources."
+            },
+            "minLength": 3,
+            "maxLength": 15
+        },
+        "location": {
+            "type": "string",
+            "defaultValue": "westus2",
+            "metadata": {
+                "description": "Location for the VM, only certain regions support Availability Zones"
+            }
+        },
+        "friendlyLocation": {
+            "type": "string",
+            "defaultValue": "wus",
+            "metadata": {
+                "description": "Location for the VM, only certain regions support Availability Zones"
+            }
+        },
+        "externalDomain": {
+            "type": "string",
+            "defaultValue": "myapigw.site",
+            "metadata": {
+                "description": "The external domain hosted on the NGINX instance"
+            }
+        },
+        "adminUsername": {
+            "type": "string",
+            "metadata": {
+                "description": "Username for the Virtual Machine."
+            },
+            "defaultValue": "admin-nginx"
+        },
+        "sshAdminKey": {
+            "type": "string",
+            "metadata": {
+                "description": "SSHA public key for the admin user."
+            },
+            "defaultValue": "ssh-rsa AAAAB3NzaC1yc2EAAAABJQAAAQEA67RrUP8h0QqEBZ6GC6U2F4XEeWpCX+RDynRWt3AtpC+GDxAON/cTbnhpSebh+JwiosImi+rSKaXYE00RlMS0jIXyGbyRuXQ62iK2cTyy5jcceFeN4DKfew8owhgdYu99UnfUryafMF3RbFlA4MQfHVhgNnSv4AxPyST/EbCjMAAgph7hht8lk4X/bMhZebwa+ITORDtouQiHYiP4q4y6uRrpYVOiwe4HIfeBxEN3R0F/w8XIZ1G+/CRF7RgvsUaczgPeS8ILLi6FWB14mAl/wF1j07HyVH2ypYFMrqsvRZwu3TwL9PBIa9ROoVmjaFDeQSX1EIeOXAnUpdZ3xozjbQ=="     
+        },
+        "numberOfVms": {
+            "type": "int",
+            "defaultValue": 2,
+            "metadata": {
+                "description": "The number of VMs to deploy in each VMSS."
+            }
+        },
+        "nginxClientCertThumbprint": {
+            "type": "string",
+            "metadata": {
+                "description": "Thumbprint of the NGINX client cert to use to connect to NGINX repo"
+            }
+        },
+        "storageAccountName": {
+            "type": "string",
+            "metadata": {
+                "description": "Storage account used for app"
+            }
+        },
+        "_artifactsLocation": {
+            "type": "string",
+            "metadata": {
+                "description": "Name of the storage account where artifact are located"
+            }
+        },
+        "_artifactsLocationSasToken": {
+            "type": "securestring"
+        },
+        "nginxClientCertUrl": {
+            "type": "string"
+        },
+        "sourceVaultValue": {
+            "type": "string"
+        },
+        "ggStreetViewApiKey": {
+            "type": "securestring"
+        },
+        "azureMapsApiKey": {
+            "type": "securestring"
+        },
+        "workspaceId": {
+            "type": "string"
+        },
+        "workspaceKey": {
+            "type": "securestring"
+        }
+    },
+    "variables": {
+        "googleStreetViewEndpoint": "[concat('google-maps-nginx2019.',parameters('friendlyLocation'),'.',parameters('environment'),'.',parameters('externalDomain'))]",
+        "azureMapsEndpoint": "[concat('azure-maps-nginx2019.',parameters('friendlyLocation'),'.',parameters('environment'),'.',parameters('externalDomain'))]",
+        "extCmdToExecute": "[concat('sudo sh install-proxy.sh ',variables('deploymentParams').updateOs,' ',variables('deploymentParams').epelVersion,' ',variables('deploymentParams').ansibleVersion,' ',variables('deploymentParams').nginxSetMiscVersion,' ',variables('deploymentParams').nginxNdkVersion,' ',variables('deploymentParams').nginxNjsVersion,' ',variables('deploymentParams').nginxVersion,' ',parameters('nginxClientCertThumbprint'),' ',parameters('environment'),' ',parameters('ggStreetViewApiKey'),' ',parameters('workspaceId'),' ',parameters('workspaceKey'),' ',variables('googleStreetViewEndpoint'),' ',variables('azureMapsEndpoint'),' ',parameters('azureMapsApiKey'),' ',parameters('friendlyLocation'),' ',deployment().name)]",
+        "deploymentParams": {
+            "updateOs": "no",
+            "epelVersion": "epel-release-latest-7.noarch.rpm",
+            "ansibleVersion": "ansible",
+            "nginxSetMiscVersion": "nginx-plus-module-set-misc-15+0.31-2.el7_4.ngx.x86_64",
+            "nginxNdkVersion": "nginx-plus-module-ndk-15+0.3.0-2.el7_4.ngx.x86_64",
+            "nginxNjsVersion": "nginx-plus-module-njs-15+0.2.0-2.el7_4.ngx.x86_64",
+            "nginxVersion": "nginx-plus-15-2.el7_4.ngx.x86_64"
+        },
+        "apiVersion": {
+            "compute": "2018-10-01",
+            "network": "2017-08-01"
+        },
+        "sshKeyPath": "[concat('/home/',parameters('adminUsername'),'/.ssh/authorized_keys')]",
+        "virtualNetworkName": "[concat(parameters('friendlyLocation'),'-',parameters('environment'),'-',parameters('appCode'), '-vn')]",
+        "subnetName": "Subnet-1",
+        "networkSecurityGroupName": "[concat(parameters('friendlyLocation'),'-',parameters('environment'),'-',parameters('appCode'), '-nsg')]",
+        "publicIPAddressName": "[concat(parameters('friendlyLocation'),'-',parameters('environment'),'-',parameters('appCode'), '-pip')]",
+        "publicIPAddressID": "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIPAddressName'))]",
+        "frontEndIPConfigID": "[concat(variables('lbID'), '/frontendIPConfigurations/loadBalancerFrontEnd')]",
+        "lbName": "[concat(parameters('friendlyLocation'),'-',parameters('environment'),'-',parameters('appCode'), '-lb')]",
+        "lbID": "[resourceId('Microsoft.Network/loadBalancers', variables('lbName'))]",
+        "lbBE": "lbBE",
+        "lbNAT": "lbNAT",
+        "myZones": [
+            "1"
+        ],
+        "linuxImage": {
+            "publisher": "openlogic",
+            "offer": "centos",
+            "sku": "7.5",
+            "version": "latest"
+        },
+        "prxExtensionFilesUri": [
+          "[concat(parameters('_artifactsLocation'),'/nginx-artifacts.zip',parameters('_artifactsLocationSasToken'))]",
+          "[concat(parameters('_artifactsLocation'),'/VM-Scripts/install-proxy.sh',parameters('_artifactsLocationSasToken'))]",
+          "[concat(parameters('_artifactsLocation'),'/Ansible/ans-main.yml',parameters('_artifactsLocationSasToken'))]",
+          "[concat(parameters('_artifactsLocation'),'/Ansible/ans-proxy.yml',parameters('_artifactsLocationSasToken'))]",
+          "[concat(parameters('_artifactsLocation'),'/Ansible/ans-inventory.yml',parameters('_artifactsLocationSasToken'))]"
+        ]
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Network/virtualNetworks",
+            "apiVersion": "[variables('apiVersion').network]",
+            "name": "[variables('virtualNetworkName')]",
+            "location": "[parameters('location')]",
+            "tags": {
+                "displayName":"vNet"
+            },
+            "properties": {
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "10.0.0.0/16"
+                    ]
+                },
+                "subnets": [
+                    {
+                        "name": "[variables('subnetName')]",
+                        "properties": {
+                            "addressPrefix": "10.0.0.0/24"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Network/networkSecurityGroups",
+            "apiVersion": "[variables('apiVersion').network]",
+            "name": "[variables('networkSecurityGroupName')]",
+            "location": "[parameters('location')]",
+            "tags": {
+                "displayName":"Network Security Group"
+            },
+            "properties": {
+                "securityRules": [
+                    {
+                        "name": "remoteConnection",
+                        "properties": {
+                            "description": "Allow SSH traffic",
+                            "protocol": "Tcp",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "22",
+                            "sourceAddressPrefix": "*",
+                            "destinationAddressPrefix": "*",
+                            "access": "Allow",
+                            "priority": 101,
+                            "direction": "Inbound"
+                        }
+                    },
+                    {
+                        "name": "webTraffic",
+                        "properties": {
+                            "description": "Allow web traffic",
+                            "protocol": "Tcp",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "80",
+                            "sourceAddressPrefix": "*",
+                            "destinationAddressPrefix": "*",
+                            "access": "Allow",
+                            "priority": 100,
+                            "direction": "Inbound"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Network/publicIPAddresses",
+            "apiVersion": "[variables('apiVersion').network]",
+            "name": "[variables('publicIPAddressName')]",
+            "location": "[parameters('location')]",
+            "tags": {
+                "displayName":"Public IP"
+            },
+            "sku": {
+                "name": "Standard"
+            },
+            "properties": {
+                "publicIPAllocationMethod": "Static",
+                "dnsSettings": {
+                    "domainNameLabel": "[concat(parameters('friendlyLocation'),'-',parameters('environment'),'-',parameters('appCode'))]"
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Network/loadBalancers",
+            "apiVersion": "[variables('apiVersion').network]",
+            "name": "[variables('lbName')]",
+            "location": "[parameters('location')]",
+            "tags": {
+                "displayName":"Loaf Balancer"
+            },
+            "sku": {
+                "name": "Standard"
+            },
+            "dependsOn": [
+                "[variables('publicIPAddressName')]"
+            ],
+            "properties": {
+                "frontendIPConfigurations": [
+                    {
+                        "name": "LoadBalancerFrontEnd",
+                        "properties": {
+                            "publicIPAddress": {
+                                "id": "[variables('publicIPAddressID')]"
+                            }
+                        }
+                    }
+                ],
+                "backendAddressPools": [
+                    {
+                        "name": "[variables('lbBE')]"
+                    }
+                ],
+                "loadbalancingRules": [
+                    {
+                        "name": "lbrule1",
+                        "properties": {
+                            "frontendIPConfiguration": {
+                                "id": "[variables('frontendIPConfigID')]"
+                            },
+                            "backendaddressPool": {
+                                "id": "[resourceId('Microsoft.Network/loadBalancers/backendAddressPools', variables('lbName'), variables('lbBE'))]"
+                            },
+                            "protocol": "Tcp",
+                            "frontendPort": 80,
+                            "backendPort": 80,
+                            "probe": {
+                                "id": "[concat(resourceId('Microsoft.Network/loadBalancers', variables('lbName')), '/probes/tcpProbe')]"
+                            }
+                        }
+                    }
+                ],
+                "probes": [
+                    {
+                        "name": "tcpProbe",
+                        "properties": {
+                            "protocol": "Tcp",
+                            "port": 80,
+                            "intervalInSeconds": 5,
+                            "numberOfProbes": 2
+                        }
+                    }
+                ],
+                "inboundNatPools": [
+                    {
+                        "name": "[concat(variables('lbNAT'), '1')]",
+                        "properties": {
+                            "frontendIPConfiguration": {
+                                "id": "[variables('frontEndIPConfigID')]"
+                            },
+                            "protocol": "Tcp",
+                            "frontendPortRangeStart": 50100,
+                            "frontendPortRangeEnd": 50199,
+                            "backendPort": 22
+                        }
+                    },
+                    {
+                        "name": "[concat(variables('lbNAT'), '2')]",
+                        "properties": {
+                            "frontendIPConfiguration": {
+                                "id": "[variables('frontEndIPConfigID')]"
+                            },
+                            "protocol": "Tcp",
+                            "frontendPortRangeStart": 50200,
+                            "frontendPortRangeEnd": 50299,
+                            "backendPort": 22
+                        }
+                    },
+                    {
+                        "name": "[concat(variables('lbNAT'), '3')]",
+                        "properties": {
+                            "frontendIPConfiguration": {
+                                "id": "[variables('frontEndIPConfigID')]"
+                            },
+                            "protocol": "Tcp",
+                            "frontendPortRangeStart": 50300,
+                            "frontendPortRangeEnd": 50399,
+                            "backendPort": 22
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Compute/virtualMachineScaleSets",
+            "apiVersion": "[variables('apiVersion').compute]",
+            "name": "[concat(parameters('friendlyLocation'),'-',parameters('environment'),'-vmss-', variables('myZones')[copyindex()])]",
+            "location": "[parameters('location')]",
+            "tags": {
+                "displayName":"NGINX Vmss"
+            },
+            "zones": [
+                "[variables('myZones')[copyindex()]]"
+            ],
+            "copy": {
+                "name": "VMSScount",
+                "count": "[length(variables('myZones'))]"
+            },
+            "dependsOn": [
+                "[variables('virtualNetworkName')]",
+                "[variables('lbName')]",
+                "[variables('networkSecurityGroupName')]"
+            ],
+            "sku": {
+                "name": "Standard_F4s_v2",
+                "capacity": "[parameters('numberOfVms')]"
+            },
+            "properties": {
+                "singlePlacementGroup": true,
+                "upgradePolicy": {
+                    "mode": "Automatic"
+                },
+                "virtualMachineProfile": {
+                    "storageProfile": {
+                        "osDisk": {
+                            "createOption": "FromImage"
+                        },
+                        "imageReference": "[variables('linuxImage')]",
+                        "dataDisks": [
+                        ]
+                    },
+                    "osProfile": {
+                        "computerNamePrefix": "[concat(parameters('friendlyLocation'),'-',parameters('environment'),'-')]",
+                        "adminUsername": "[parameters('adminUsername')]",
+                        "linuxConfiguration": {
+                            "disablePasswordAuthentication": true,
+                            "ssh": {
+                                "publicKeys": [
+                                {
+                                    "path": "[variables('sshKeyPath')]",
+                                    "keyData": "[parameters('sshAdminKey')]"
+                                }
+                                ]
+                            }
+                        },
+                        "customData": "[base64(variables('myZones')[copyindex()])]",
+                        "secrets": [
+                            {
+                                "sourceVault": {
+                                    "id": "[parameters('sourceVaultValue')]"
+                                },
+                                "vaultCertificates": [
+                                    {
+                                        "certificateUrl": "[parameters('nginxClientCertUrl')]"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "networkProfile": {
+                        "networkInterfaceConfigurations": [
+                            {
+                                "name": "myNic",
+                                "properties": {
+                                    "networkSecurityGroup": {
+                                        "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]"
+                                    },
+                                    "primary": true,
+                                    "ipConfigurations": [
+                                        {
+                                            "name": "myIpConfig",
+                                            "properties": {
+                                                "subnet": {
+                                                    "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('virtualNetworkName'), variables('subnetName'))]"
+                                                },
+                                                "loadBalancerBackendAddressPools": [
+                                                    {
+                                                        "id": "[resourceId('Microsoft.Network/loadBalancers/backendAddressPools', variables('lbName'), variables('lbBE'))]"
+                                                    }
+                                                ],
+                                                "loadBalancerInboundNatPools": [
+                                                    {
+                                                        "id": "[resourceId('Microsoft.Network/loadBalancers/inboundNatPools', variables('lbName'), concat(variables('lbNAT'), copyindex(1)))]"
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        ]
+                    },
+                    "diagnosticsProfile": {
+                      "bootDiagnostics": {
+                        "enabled": true,
+                        "storageUri": "[concat('https://', parameters('storageAccountName'), '.blob.core.windows.net')]"
+                      }
+                    },
+                    "extensionProfile": {
+                        "extensions": [
+                            {
+                                "name": "AppInstall",
+                                "type": "Microsoft.Compute/virtualMachineScaleSets/extensions",
+                                "properties": {
+                                    "publisher": "Microsoft.Azure.Extensions",
+                                    "type": "CustomScript",
+                                    "typeHandlerVersion": "2.0",
+                                    "autoUpgradeMinorVersion": true,
+                                    "forceUpdateTag": "yes",
+                                    "settings": {
+                                        "fileUris": "[variables('prxExtensionFilesUri')]"
+                                    },
+                                    "protectedSettings": {
+                                        "commandToExecute": "[variables('extCmdToExecute')]"
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    ]
+}

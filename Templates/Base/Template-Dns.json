@@ -1,0 +1,97 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "newZoneName": {
+        "type": "string",
+        "defaultValue": "myapigw.site",
+        "metadata": {
+          "description": "The name of the DNS zone to be created.  Must have at least 2 segments, e.g. hostname.org"
+        }
+      },
+      "location": {
+          "type": "string",
+          "defaultValue": "westus2",
+          "metadata": {
+              "description": "Location for the VM, only certain regions support Availability Zones"
+          }
+      },
+      "appCode": {
+          "type": "string",
+          "metadata": {
+              "description": "String used as a base for naming resources."
+          },
+          "minLength": 3,
+          "maxLength": 15
+      },
+      "environment": {
+        "type": "string"
+      },
+      "friendlyLocation": {
+        "type": "string"
+      },
+      "TTL": {
+        "type": "int",
+        "defaultValue": 60,
+        "metadata": {
+          "description": "The TTL of the DNS records"
+        }
+      },
+      "cloudappDomain": {
+        "type": "string",
+        "defaultValue": "cloudapp.azure.com",
+        "metadata": {
+          "description": "Domain for CloudApp"
+        }
+      }
+    },
+    "variables": {
+      "dnsZonesApiVersion": "2017-09-01",
+      "DnsRecordsList": [
+        {
+          "name": "[concat('google-maps-',parameters('appCode'),'.',parameters('friendlyLocation'),'.',parameters('environment'))]",
+          "value": "[concat(parameters('friendlyLocation'),'-',parameters('environment'),'-',parameters('appCode'),'.',parameters('location'),'.', parameters('cloudappDomain'))]"
+        },
+        {
+          "name": "[concat('azure-maps-',parameters('appCode'),'.',parameters('friendlyLocation'),'.',parameters('environment'))]",
+          "value": "[concat(parameters('friendlyLocation'),'-',parameters('environment'),'-',parameters('appCode'),'.',parameters('location'),'.', parameters('cloudappDomain'))]"
+        },
+      ]
+    },
+    "resources": [
+      {
+        "type": "Microsoft.Network/dnszones",
+        "name": "[parameters('newZoneName')]",
+        "apiVersion": "[variables('dnsZonesApiVersion')]",
+        "tags": {
+          "displayName": "myapigw.site DNS zone"
+        },
+        "location": "global"
+      },
+      {
+        "type": "Microsoft.Network/dnszones/CNAME",
+        "name": "[concat(parameters('newZoneName'), '/', variables('DnsRecordsList')[copyIndex()].name)]",
+        "apiVersion": "[variables('dnsZonesApiVersion')]",
+        "tags": {
+          "displayName": "CNAME entries"
+        },
+        "location": "global",
+        "dependsOn": [
+          "[parameters('newZoneName')]"
+        ],
+        "properties": {
+          "TTL": "[parameters('TTL')]",
+          "CNAMERecord": {
+            "cname": "[variables('DnsRecordsList')[copyIndex()].value]"
+          }
+        },
+        "copy": {
+          "name": "DnsRecordsListCopy",
+          "count": "[length(variables('DnsRecordsList'))]"
+        }
+      }
+    ],
+    "outputs": {
+    }
+  }
+  

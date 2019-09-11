@@ -1,0 +1,60 @@
+#Dedicated entry for error.log#
+<source>
+    @type tail
+    format /^(?<time>\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}) \[(?<log_level>\w+)\] (?<pid>\d+).(?<tid>\d+): (?<message>.*)$/
+    tag nginxconf2019.nginx.error
+    path /var/log/nginx/error.log
+    pos_file /var/log/td-agent/error.log.pos
+    time_key time
+    time_format %Y/%m/%d %H:%M:%S
+</source>
+
+#Dedicated entry for Google log file
+<source>
+  @type tail
+  path /var/log/nginx/app-google.log
+  pos_file /var/log/td-agent/app-google.log.pos
+  tag nginxconf2019.nginx.google
+  format csv
+  delimiter ;
+  keys time,hostname,bytes_sent,request_time,upstream_response_length,upstream_response_time,content_length,remote_addr,status,host,request,http_user_agent
+  types time:time,hostname:string,bytes_sent:float,request_time:float,upstream_response_length:float,upstream_response_time:float,content_length:string,remote_addr:string,status:integer,host:string,request:string,http_user_agent:string
+  time_key time
+  time_format %FT%T%z
+</source>
+
+#Dedicated entry for AzureMaps log file
+<source>
+  @type tail
+  path /var/log/nginx/app-azuremaps.log
+  pos_file /var/log/td-agent/app-azuremaps.log.pos
+  tag nginxconf2019.nginx.azuremaps
+  format csv
+  delimiter ;
+  keys time,hostname,bytes_sent,request_time,upstream_response_length,upstream_response_time,content_length,remote_addr,status,host,request,http_user_agent
+  types time:time,hostname:string,bytes_sent:float,request_time:float,upstream_response_length:float,upstream_response_time:float,content_length:string,remote_addr:string,status:integer,host:string,request:string,http_user_agent:string
+  time_key time
+  time_format %FT%T%z
+</source>
+
+<match nginxconf2019.nginx.error>
+    @type azure-loganalytics
+    customer_id {{ workspaceId }}
+    shared_key {{ workspaceKey }}
+    log_type nginxerror
+    add_tag_field true
+    tag_field_name logTag
+    time_generated_field time
+    time_format %Y/%m/%d %H:%M:%S
+</match>
+
+<match nginxconf2019.nginx.*>
+    @type azure-loganalytics
+    customer_id {{ workspaceId }}
+    shared_key {{ workspaceKey }}
+    log_type nginxglobal
+	  time_generated_field time
+    time_format %FT%T%z
+    add_tag_field true
+    tag_field_name logTag
+</match>

@@ -1,0 +1,24 @@
+server {
+	#We listen for HTTP requests on port 80, using servername to know which site to server
+	#Server name is part of the Host header, Server Name Indication
+	listen 80;  
+	server_name {{ googleStreetViewEndpoint }};
+
+	root /usr/share/nginx/empty;
+
+	#We enable a shared zone for NGINX stats for the server
+    status_zone status-zone;
+
+    location /maps/api/streetview {
+		proxy_http_version 1.1;
+		#We limit method to only required one
+		limit_except GET {
+				deny all;
+		}
+	
+		#Block required to configured backend to pass request to
+		proxy_pass https://maps.googleapis.com;
+		set $args $args&key={{ ggStreetViewApiKey }};
+		access_log /var/log/nginx/app-google.log customlog;
+    }
+}

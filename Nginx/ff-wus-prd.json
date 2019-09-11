@@ -1,0 +1,7 @@
+{
+  "version": "1.0.0.0",
+  "featureFlags": {
+      "googleMaps": true,
+      "azureMaps": false
+  }
+}

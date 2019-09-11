@@ -1,0 +1,9 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+	"sshAdminKey": {
+            "value": "ssh-rsa AAAAB3NzaC1yc2EAAAABJQAAAQEA67RrUP8h0QqEBZ6GC6U2F4XEeWpCX+RDynRWt3AtpC+GDxAON/cTbnhpSebh+JwiosImi+rSKaXYE00RlMS0jIXyGbyRuXQ62iK2cTyy5jcceFeN4DKfew8owhgdYu99UnfUryafMF3RbFlA4MQfHVhgNnSv4AxPyST/EbCjMAAgph7hht8lk4X/bMhZebwa+ITORDtouQiHYiP4q4y6uRrpYVOiwe4HIfeBxEN3R0F/w8XIZ1G+/CRF7RgvsUaczgPeS8ILLi6FWB14mAl/wF1j07HyVH2ypYFMrqsvRZwu3TwL9PBIa9ROoVmjaFDeQSX1EIeOXAnUpdZ3xozjbQ=="
+		}
+    }
+}

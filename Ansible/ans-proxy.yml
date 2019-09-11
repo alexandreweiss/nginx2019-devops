@@ -1,0 +1,183 @@
+---
+- hosts: local
+  tasks:
+
+    - name: NOT TO BE DONE IN PRODUCTION - Put SELinux in permissive mode, logging actions that would be blocked. 
+      selinux:
+        policy: targeted
+        state: permissive
+
+### SETUP THE NGINX REPO TO DOWNLOAD PLUS VERSION
+    - name: create nginx SSL directory to put cert for repository client authentication ...
+      file:
+        path: /etc/ssl/nginx
+        state: directory
+
+    - name: move Nginx private key cert file to /etc/ssl/nginx directory ...
+      template:
+        src: /var/lib/waagent/{{ nginxCertificateThumbprint }}.prv
+        dest: /etc/ssl/nginx/nginx-repo.key
+        mode: 0600
+
+    - name: move Nginx public key cert file to /etc/ssl/nginx directory ...
+      template:
+        src: /var/lib/waagent/{{ nginxCertificateThumbprint }}.crt
+        dest: /etc/ssl/nginx/nginx-repo.crt
+        mode: 0664
+
+    - name: install the latest version of ca-certificates ...
+      package:
+        name: ca-certificates
+        state: latest
+
+    - name: install the nginx repo ...
+      yum_repository:
+        name: nginx-plus-repo
+        description: repository containing plus version of Nginx
+        baseurl: https://plus-pkgs.nginx.com/centos/7.4/$basearch/
+        gpgcheck: yes
+        gpgkey: https://nginx.org/keys/nginx_signing.key
+        sslclientcert: /etc/ssl/nginx/nginx-repo.crt
+        sslclientkey: /etc/ssl/nginx/nginx-repo.key
+        enabled: yes
+        state: present
+### END OF SETUP THE NGINX REPO TO DOWNLOAD PLUS VERSION
+
+### INSTALL PACKAGES
+    - name: install the fluentd repo ...
+      yum_repository:
+        name: fluentd
+        description: repository containing fluentd
+        baseurl: http://packages.treasuredata.com/2/redhat/\$releasever/\$basearch
+        gpgcheck: yes
+        gpgkey: https://packages.treasuredata.com/GPG-KEY-td-agent
+        enabled: yes
+        state: present
+
+    - name: install the latest version of nginx ...
+      package:
+        name: "nginx-plus"
+        state: latest
+
+    - name: install the latest version of td-agent ...
+      package:
+        name: td-agent
+        state: latest
+
+    - name: add td-agent user to the adm group to access nginx logs ...
+      user:
+        name: td-agent
+        groups: adm
+        append: yes
+
+    - name: install the latest version of gcc ...
+      package:
+        name: gcc
+        state: latest
+
+    - name: install the latest version of gcc-c++ (for fulentd)...
+      package:
+        name: gcc-c++
+        state: latest
+
+    - name: Install fluent Log Analytics plugin ...
+      shell: /sbin/td-agent-gem install fluent-plugin-azure-loganalytics
+
+    - name: create extract directory to extract artifacts to ...
+      file:
+        path: "{{ playbook_dir }}/extract"
+        state: directory
+### END OF INSTALL PACKAGES
+
+### DEPLOY CONF BASED ON FEATURE FLAGS
+    - name: Extract all artifacts contained in nginx-artifacts.zip file ...
+      unarchive:
+        src: "{{ playbook_dir }}/nginx-artifacts.zip"
+        dest: "{{ playbook_dir }}/extract/"
+        extra_opts: "-aa"
+      register: extract_nginx
+      ignore_errors: true
+
+    - name: load the feature flags file ...
+      include_vars:
+        file: "{{ playbook_dir }}/extract/Nginx/ff-{{ friendlyLocation }}-{{ env }}.json"
+        name: featureflags
+
+    - name: purge old configuration vh-*.conf files in /etc/nginx/conf.d ...
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_fileglob:
+        - "/etc/nginx/conf.d/vh-*.conf"
+
+### GOOGLE
+    - name: render Google config file ...
+      template:
+        src: "{{ playbook_dir }}/extract/Nginx/vh-googlemaps.conf.j2"
+        dest: "/etc/nginx/conf.d/vh-googlemaps.conf"
+      when: featureflags.featureFlags.googleMaps == true
+
+### AZURE
+    - name: render Google config file ...
+      template:
+        src: "{{ playbook_dir }}/extract/Nginx/vh-azuremaps.conf.j2"
+        dest: "/etc/nginx/conf.d/vh-azuremaps.conf"
+      when: featureflags.featureFlags.azureMaps == true
+
+    - name: render misc config file ...
+      template:
+        src: "{{ playbook_dir }}/extract/Nginx/misc.conf.j2"
+        dest: "/etc/nginx/conf.d/misc.conf"
+        owner: root
+        group: root
+        mode: 0664
+### END OF DEPLOY CONF BASED ON FEATURE FLAGS
+
+### TEST AND RELOAD CONFIGURATION
+    - name: add td-agent user to the adm group to access nginx logs ...
+      user:
+        name: td-agent
+        groups: adm
+        append: yes
+
+    - name: create conf.d directory to put td-agent configurations to ...
+      file:
+        path: "/etc/td-agent/conf.d"
+        state: directory
+
+    - name: include conf.d loading for td-agent ...
+      lineinfile:
+        path: /etc/td-agent/td-agent.conf
+        line: '@include /etc/td-agent/conf.d/*.conf'
+
+    - name: render td-agent config file ...
+      template:
+        src: "{{ playbook_dir }}/extract/Td-agent/td-agent-log-ana.conf.j2"
+        dest: "/etc/td-agent/conf.d/td-agent-log-ana.conf"
+  
+    - name: test td-agent configuration before reloading
+      shell: /sbin/td-agent --dry-run
+      register: tdagent_test
+
+    - name : restart td-agent
+      shell: /bin/systemctl restart td-agent
+
+    - name: test nginx configuration before reloading
+      shell: nginx -t
+      register: nginx_test
+
+    - name: enable and start nginx service
+      service:
+        name: nginx
+        enabled: yes
+        state: started
+      when: nginx_test is succeeded
+
+    - name: reload nginx service
+      service:
+        name: nginx
+        enabled: yes
+        state: reloaded
+      when: nginx_test is succeeded
+
+### END OF TEST AND RELOAD CONFIGURATION
