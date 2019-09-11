@@ -1,20 +1,24 @@
 # Introduction 
-TODO: Give a short introduction of your project. Let this section explain the objectives or the motivation behind this project. 
+This repository contains code i used during my session at NGINX Conf 2019 about "Automating Deployment of NGINX as an API Gateway for External APIs Using Azure DevOps"
 
 # Getting Started
-TODO: Guide users through getting your code up and running on their own system. In this section you can talk about:
-1.	Installation process
-2.	Software dependencies
-3.	Latest releases
-4.	API references
+Logic behing is :
+1.	Create Azure Resource groups,
+2.	Create DNS resources in a dedicated dns-rg resource group,
+3.	Create Base resources which are KeyVault and Log Analytics Workspace
+4.  Here you should add secret by your own and update Deploy-Nginx.ps1 accordingly
+4.	Deploy NGINX resources in your subscription
 
-# Build and Test
-TODO: Describe and show how to build your code and run the tests. 
+# Requirements
+1. Have an Azure DevOps free account or more
+2. Have a trial Azure Subscription
+3. Setup an Azure DevOps project with a repository, build and release
+4. Have an Nginx Plus license or remove the steps in the ans-proxy.yml
 
 # Contribute
-TODO: Explain how other users and developers can contribute to make your code better. 
+Do not hesitate to contribute, ask questions if any ...
+We can update templates with a better NGINX architecture etc ...
 
-If you want to learn more about creating good readme files then refer the following [guidelines](https://www.visualstudio.com/en-us/docs/git/create-a-readme). You can also seek inspiration from the below readme files:
-- [ASP.NET Core](https://github.com/aspnet/Home)
-- [Visual Studio Code](https://github.com/Microsoft/vscode)
-- [Chakra Core](https://github.com/Microsoft/ChakraCore)
+# Session purpose
+https://www.nginx.com/nginxconf/2019/session/automating-deployment-of-nginx-api-gateway-azure-devops/
+
