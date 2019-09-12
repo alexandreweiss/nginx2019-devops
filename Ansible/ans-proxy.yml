@@ -128,9 +128,6 @@
       template:
         src: "{{ playbook_dir }}/extract/Nginx/misc.conf.j2"
         dest: "/etc/nginx/conf.d/misc.conf"
-        owner: root
-        group: root
-        mode: 0664
 ### END OF DEPLOY CONF BASED ON FEATURE FLAGS
 
 ### TEST AND RELOAD CONFIGURATION
