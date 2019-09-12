@@ -2,6 +2,5 @@
 - hosts: local
 
 #This is the main playbook from which we call sub playbook
-#Squid is deployed only on SPP
 
 - import_playbook: ans-proxy.yml
