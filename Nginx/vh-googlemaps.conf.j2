@@ -1,7 +1,7 @@
 server {
 	#We listen for HTTP requests on port 80, using servername to know which site to server
 	#Server name is part of the Host header, Server Name Indication
-	listen 80;  
+	listen 80 default_server;  
 	server_name {{ googleStreetViewEndpoint }};
 
 	root /usr/share/nginx/empty;

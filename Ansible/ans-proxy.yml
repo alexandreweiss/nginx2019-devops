@@ -59,6 +59,16 @@
         name: "nginx-plus"
         state: latest
 
+    - name: install the latest version of nginx ndk module ...
+      package:
+        name: "nginx-plus-module-ndk"
+        state: latest
+
+    - name: install the latest version of nginx js module ...
+      package:
+        name: "nginx-plus-module-njs"
+        state: latest
+
     - name: install the latest version of td-agent ...
       package:
         name: td-agent
@@ -103,12 +113,12 @@
         file: "{{ playbook_dir }}/extract/Nginx/ff-{{ friendlyLocation }}-{{ env }}.json"
         name: featureflags
 
-    - name: purge old configuration vh-*.conf files in /etc/nginx/conf.d ...
+    - name: purge old configuration *.conf files in /etc/nginx/conf.d ...
       file:
         path: "{{ item }}"
         state: absent
       with_fileglob:
-        - "/etc/nginx/conf.d/vh-*.conf"
+        - "/etc/nginx/conf.d/*.conf"
 
 ### GOOGLE
     - name: render Google config file ...
@@ -117,18 +127,47 @@
         dest: "/etc/nginx/conf.d/vh-googlemaps.conf"
       when: featureflags.featureFlags.googleMaps == true
 
-### AZURE
-    - name: render Google config file ...
+### AZURE MAPS WITHOUT AUTHZ
+    - name: render Azure Maps config file ...
       template:
         src: "{{ playbook_dir }}/extract/Nginx/vh-azuremaps.conf.j2"
         dest: "/etc/nginx/conf.d/vh-azuremaps.conf"
-      when: featureflags.featureFlags.azureMaps == true
+      when: featureflags.featureFlags.azureMaps == true and featureflags.featureFlags.azureMaps == 1
 
+### AZURE MAPS WITH AUTHZ
+    - name: render Azure Maps with Authorization config file ...
+      template:
+        src: "{{ playbook_dir }}/extract/Nginx/vh-azuremaps-authz.conf.j2"
+        dest: "/etc/nginx/conf.d/vh-azuremaps-authz.conf"
+      when: featureflags.featureFlags.azureMaps == true and featureflags.featureFlags.azureMaps == 2
+
+### AZURE MAPS RATE LIMIT
+    - name: render Azure Maps with Rate Limit config file ...
+      template:
+        src: "{{ playbook_dir }}/extract/Nginx/vh-azuremaps-rate-limit.conf.j2"
+        dest: "/etc/nginx/conf.d/vh-azuremaps-rate-limit.conf"
+      when: featureflags.featureFlags.azureMapsRateLimit == true
+### END OF DEPLOY CONF BASED ON FEATURE FLAGS
+
+### DEPLOY MISC, JS ... CONFIG
     - name: render misc config file ...
       template:
         src: "{{ playbook_dir }}/extract/Nginx/misc.conf.j2"
         dest: "/etc/nginx/conf.d/misc.conf"
-### END OF DEPLOY CONF BASED ON FEATURE FLAGS
+
+    - name: copy script-functions.js file to /etc/nginx/conf.d directory ...
+      template:
+        src: "{{ playbook_dir }}/extract/Nginx/script-functions.js"
+        dest: /etc/nginx/conf.d/script-functions.js
+### END OF DEPLOY MISC, JS ... CONFIG
+
+### LOAD NGINX JS MODULE
+    - name: include loading JS module for nginx ...
+      lineinfile:
+        path: /etc/nginx/nginx.conf
+        line: 'load_module /etc/nginx/modules/ngx_http_js_module.so;'
+        insertbefore: 'BOF'
+### END OF LOAD NGINX JS MODULE
 
 ### TEST AND RELOAD CONFIGURATION
     - name: add td-agent user to the adm group to access nginx logs ...

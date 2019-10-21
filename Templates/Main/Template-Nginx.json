@@ -94,12 +94,18 @@
         },
         "workspaceKey": {
             "type": "securestring"
+        },
+        "azureMapsRateLimitValue": {
+            "type": "int",
+            "defaultValue": 1
         }
     },
     "variables": {
         "googleStreetViewEndpoint": "[concat('google-maps-nginx2019.',parameters('friendlyLocation'),'.',parameters('environment'),'.',parameters('externalDomain'))]",
         "azureMapsEndpoint": "[concat('azure-maps-nginx2019.',parameters('friendlyLocation'),'.',parameters('environment'),'.',parameters('externalDomain'))]",
-        "extCmdToExecute": "[concat('sudo sh install-proxy.sh ',variables('deploymentParams').updateOs,' ',variables('deploymentParams').epelVersion,' ',variables('deploymentParams').ansibleVersion,' ',variables('deploymentParams').nginxSetMiscVersion,' ',variables('deploymentParams').nginxNdkVersion,' ',variables('deploymentParams').nginxNjsVersion,' ',variables('deploymentParams').nginxVersion,' ',parameters('nginxClientCertThumbprint'),' ',parameters('environment'),' ',parameters('ggStreetViewApiKey'),' ',parameters('workspaceId'),' ',parameters('workspaceKey'),' ',variables('googleStreetViewEndpoint'),' ',variables('azureMapsEndpoint'),' ',parameters('azureMapsApiKey'),' ',parameters('friendlyLocation'),' ',deployment().name)]",
+        "azureMapsRateLimitEndpoint": "[concat('azure-maps-rate-limit-nginx2019.',parameters('friendlyLocation'),'.',parameters('environment'),'.',parameters('externalDomain'))]",
+        "aclStorageAccountName": "[concat(parameters('friendlyLocation'),parameters('environment'),parameters('appCode'), 'sa')]",
+        "extCmdToExecute": "[concat('sudo sh install-proxy.sh ',variables('deploymentParams').updateOs,' ',variables('deploymentParams').epelVersion,' ',variables('deploymentParams').ansibleVersion,' ',variables('deploymentParams').nginxSetMiscVersion,' ',variables('deploymentParams').nginxNdkVersion,' ',variables('deploymentParams').nginxNjsVersion,' ',variables('deploymentParams').nginxVersion,' ',parameters('nginxClientCertThumbprint'),' ',parameters('environment'),' ',parameters('ggStreetViewApiKey'),' ',parameters('workspaceId'),' ',parameters('workspaceKey'),' ',variables('googleStreetViewEndpoint'),' ',variables('azureMapsEndpoint'),' ',parameters('azureMapsApiKey'),' ',parameters('friendlyLocation'),' ',variables('azureMapsRateLimitEndpoint'),' ',parameters('azureMapsRateLimitValue'),' ',variables('aclStorageAccountName'),' ',deployment().name)]",
         "deploymentParams": {
             "updateOs": "no",
             "epelVersion": "epel-release-latest-7.noarch.rpm",

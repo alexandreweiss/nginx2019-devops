@@ -18,7 +18,9 @@ googleStreetViewEndpoint=${13}
 azureMapsEndpoint=${14}
 azureMapsApiKey=${15}
 friendlyLocation=${16}
-
+azureMapsRateLimitEndpoint=${17}
+azureMapsRateLimitValue=${18}
+aclStorageAccountName=${19}
 
 # Install updates if required
 if [ "$updateOs" == "yes" ]
@@ -52,4 +54,7 @@ workspaceKey=$workspaceKey \
 googleStreetViewEndpoint=$googleStreetViewEndpoint \
 azureMapsEndpoint=$azureMapsEndpoint \
 azureMapsApiKey=$azureMapsApiKey \
-friendlyLocation=$friendlyLocation"
+friendlyLocation=$friendlyLocation \
+azureMapsRateLimitEndpoint=$azureMapsRateLimitEndpoint \
+azureMapsRateLimitValue=$azureMapsRateLimitValue \
+aclStorageAccountName=$aclStorageAccountName"
