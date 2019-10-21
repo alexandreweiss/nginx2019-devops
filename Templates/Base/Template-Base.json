@@ -104,11 +104,18 @@
     "variables": {
       "workspaceName": "[concat(parameters('friendlyLocation'),'-',parameters('environment'), '-oms')]",
       "keyVaultName": "[concat(parameters('friendlyLocation'),'-',parameters('environment'),'-',parameters('appCode'), '-kv')]",
+      "aclStorageAccountName": "[concat(parameters('friendlyLocation'),parameters('environment'),parameters('appCode'), 'sa')]",
       "apiVersion": {
         "keyVault": "2018-02-14",
         "network": "2017-08-01",
-        "insights": "2017-04-26-preview"
-    }
+        "insights": "2017-04-26-preview",
+        "storage": "2019-04-01"
+      },
+      "containerList": [
+        {
+          "name": "azuremaps"
+        }
+      ]
     },
     "resources": [
       {
@@ -165,7 +172,37 @@
           "retention": "[parameters('omsDataRetention')]"
         },
         "resources": [ ]
+      },
+      {
+        "apiVersion": "[variables('apiVersion').storage]",
+        "type": "Microsoft.Storage/storageAccounts",
+        "name": "[variables('aclStorageAccountName')]",
+        "location": "[resourceGroup().location]",
+        "sku": {
+          "name": "Standard_LRS",
+          "tier": "Standard"
+        },
+        "kind": "Storage"
+      },
+      {
+        "apiVersion": "[variables('apiVersion').storage]",
+        "name": "[concat(variables('aclStorageAccountName'),'/default/',variables('containerList')[copyIndex()].name)]",
+        "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+        "dependsOn": [
+          "[variables('aclStorageAccountName')]"
+        ],
+        "copy": {
+          "name": "containerListCopy",
+          "count": "[length(variables('containerList'))]"
+        },
+        "properties": {
+          "publicAccess": "Container",
+          "metadata": {
+            "description": "Public to access without token and make it simple for the demO but MUST be private in production"
+          }
+        }
       }
+
     ]
   }
   

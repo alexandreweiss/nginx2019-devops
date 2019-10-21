@@ -56,6 +56,10 @@
           "name": "[concat('azure-maps-',parameters('appCode'),'.',parameters('friendlyLocation'),'.',parameters('environment'))]",
           "value": "[concat(parameters('friendlyLocation'),'-',parameters('environment'),'-',parameters('appCode'),'.',parameters('location'),'.', parameters('cloudappDomain'))]"
         },
+        {
+          "name": "[concat('azure-maps-rate-limit-',parameters('appCode'),'.',parameters('friendlyLocation'),'.',parameters('environment'))]",
+          "value": "[concat(parameters('friendlyLocation'),'-',parameters('environment'),'-',parameters('appCode'),'.',parameters('location'),'.', parameters('cloudappDomain'))]"
+        }
       ]
     },
     "resources": [

@@ -4,6 +4,7 @@ param(
     $serviceUrls = @(
         @('azureMaps','azure-maps-nginx2019','/search/poi/json?api-version=1&query=photographer&lat=50.5240219&lon=1.5820351&radius=100'),
         @('googleMaps','google-maps-nginx2019','/maps/api/streetview?size=1024x768&location=50.5240219%2C1.5820351&heading=240.00&pitch=-2&fov=40')
+        @('azureMapsRateLimit','azure-maps-rate-limit-nginx2019','/maps/api/streetview?size=1024x768&location=50.5240219%2C1.5820351&heading=240.00&pitch=-2&fov=40')
     ),
     [string]
     [ValidateSet('myapigw.site')]

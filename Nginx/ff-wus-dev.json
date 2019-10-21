@@ -2,6 +2,14 @@
     "version": "1.0.0.0",
     "featureFlags": {
         "googleMaps": true,
-        "azureMaps": false
+        "azureMaps": true,
+        "azureMapsRateLimit" : true
+    },
+    "featureVersions": {    
+        "azureMaps": 2
+    },
+    "featureVersionsDescriptions": {
+        "azureMaps1": "Azure Maps without authorization check",
+        "azureMaps2": "Azure Maps with authorization check"
     }
 }

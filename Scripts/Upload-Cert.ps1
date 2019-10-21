@@ -5,7 +5,7 @@ Param(
 
     [string] #[Parameter(Mandatory=$true)]
 	[ValidateSet('dev', 'prd', IgnoreCase = $false)]
-    $environment = 'dev',
+    $environment = 'prd',
 
     [string] #[Parameter(Mandatory=$true)]
 	[ValidateSet('nginx2019', IgnoreCase = $false)]
@@ -15,7 +15,7 @@ Param(
 	[ValidateSet('wus', 'frc', IgnoreCase = $false)]
     $friendlyLocation = 'wus',
 
-    [string]$PfxFilePath  = "C:\dummy.pfx",
+    [string]$PfxFilePath  = "C:\Users\alweiss\OneDrive - Microsoft\Documents\nginxconf2019\alweiss-nginx-client-cert.pfx",
 
     [string] [Parameter(Mandatory=$true)]
     $PfxCertPassword,
